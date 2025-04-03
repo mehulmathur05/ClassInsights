@@ -44,7 +44,9 @@ class ImageDatabase:
         faces = self.face_model.get(face_cropping)  # Generate the embeddings
 
         if len(faces) != 1:
-            raise ValueError(f"Expected exactly one face in the cropping, but found {len(faces)}")
+            print(f"Expected exactly one face in the cropping, but found {len(faces)}")
+            return None, None
+        
         query_embedding = faces[0].embedding.tolist()  # ChromaDB requires it to be a list and not ndarray
 
         # Query the most similar embedding

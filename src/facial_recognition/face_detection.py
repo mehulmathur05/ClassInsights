@@ -7,7 +7,7 @@ class FaceDetector:
     def __init__(self, model_selection=1, min_detection_confidence=0.5):
         # Initialize MediaPipe face detection module
         self.face_detection = mp.solutions.face_detection.FaceDetection(
-            model_selection=model_selection,
+            model_selection=model_selection,    # model number 1 seems to work well for settings with multiple faces
             min_detection_confidence=min_detection_confidence
         )
 
