@@ -10,14 +10,13 @@ from engagement_monitoring.perclos import PerclosCalculator, draw_landmarks
 
 class Pipeline:
     def __init__(self, schedule_path='../data/schedule.csv', results_dir='../results', k=30, collection="faces"):
-        """
-        Initialize the Pipeline with paths and components.
-
-        Args:
-            schedule_path (str): Path to the schedule CSV file.
-            results_dir (str): Directory for storing reports and attendance files.
-            k (int): Number of frames after which to update the present list.
-        """
+        '''
+        Arguments:
+        - schedule_path (str): Path to the schedule file
+        - results_dir (str): Directory for storing reports and attendance files
+        - k (int): Number of frames after which to update the present list
+        - collection (str): Name of the chromaDB collection to create or use
+        '''
         self.face_detector = FaceDetector()
         self.db = ImageDatabase(collection=collection)
         self.collection = collection
@@ -30,20 +29,25 @@ class Pipeline:
         self.schedule = pd.read_csv(schedule_path)
         print("Schedule DataFrame sample:\n", self.schedule.head())
         self.all_students = self._get_all_students()
-        self.processed_classes = set()  # Track classes processed in this run
+        self.processed_classes = set()  # Track classes processed in the current run
 
+
+    # Reset the report and attendance files to be empty
     def _reset_files(self):
         empty_df = pd.DataFrame()
         empty_df.to_csv(os.path.join(self.results_dir, 'report.csv'))
-        empty_df.to_csv(os.path.join(self.results_dir, 'attendance'))
+        date = datetime.now().date().strftime('%Y-%m-%d')
+        empty_df.to_csv(os.path.join(self.results_dir, f'attendance_{date}.csv'))
 
+
+    # Get all the student names and roll numbers from the db
     def _get_all_students(self):
-        """Retrieve all student roll numbers and names from the database."""
         collections = self.db.collection.get()
         return {item['roll_number']: item['name'] for item in collections['metadatas']}
 
+
+    # Determine current class using time data from the schedule.csv file
     def _get_current_class(self):
-        """Determine the current class based on the schedule and current time."""
         now = datetime.now().time()
         today = datetime.now().date()
         for _, row in self.schedule.iterrows():
@@ -58,8 +62,9 @@ class Pipeline:
                 }
         return None
 
+
+    # Update or create the attendance file
     def _update_attendance_csv(self, class_info, detected_rolls, avg_perclos_scores):
-        """Update or create the attendance_<date>.csv file."""
         date_str = class_info['date'].strftime('%Y-%m-%d')
         filename = os.path.join(self.results_dir, f'attendance_{date_str}.csv')
         
@@ -85,8 +90,9 @@ class Pipeline:
         
         df.to_csv(filename, index=False)
 
+
+    # Append to report.csv sequentially without modifying existing rows
     def _generate_report_csv(self, class_info, detected_rolls, avg_perclos_scores):
-        """Append to report.csv sequentially without updating existing rows."""
         file_path = os.path.join(self.results_dir, 'report.csv')
         class_key = f"{class_info['subject_code']}_{class_info['date'].strftime('%Y-%m-%d')}"
         
@@ -105,8 +111,9 @@ class Pipeline:
             df.to_csv(file_path, mode='a', header=not os.path.exists(file_path), index=False)
             self.processed_classes.add(class_key)
 
+
+    # Function to run the end to end pipeline
     def run(self):
-        """Run the end-to-end pipeline."""
         while True:
             response = input("Would you like to add new students to the database? (yes/no): ").strip().lower()
             if response == 'yes':
@@ -203,6 +210,7 @@ class Pipeline:
 
         cap.release()
         cv2.destroyAllWindows()
+
 
 if __name__ == '__main__':
     pipeline = Pipeline(k=30, collection="faces0")
