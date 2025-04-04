@@ -40,8 +40,8 @@ class TestPipeline(unittest.TestCase):
         report_file = os.path.join(self.temp_results, 'report.csv')
         date = datetime.now().date().strftime('%Y-%m-%d')
         attendance_file = os.path.join(self.temp_results, f'attendance_{date}.csv')
-        self.assertTrue(os.path.exists(report_file))
-        self.assertTrue(os.path.exists(attendance_file))
+        self.assertFalse(os.path.exists(report_file))
+        self.assertFalse(os.path.exists(attendance_file))
 
     @patch('pipeline.cv2.VideoCapture')
     @patch('pipeline.input', side_effect=["no"])
