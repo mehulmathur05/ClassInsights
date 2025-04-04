@@ -5,7 +5,7 @@ import os
 import cv2
 
 class ImageDatabase:
-    def __init__(self, persistence_path=None):
+    def __init__(self, persistence_path=None, collection="faces"):
         # Default initializer of persistance path
         if persistence_path is None:
             project_root = os.path.dirname(os.path.abspath(__file__))
@@ -16,7 +16,7 @@ class ImageDatabase:
 
         # Set up ChromaDB client and create or get the "faces" collection
         self.chroma_client = chromadb.PersistentClient(path=persistence_path)
-        self.collection = self.chroma_client.get_or_create_collection(name="faces")
+        self.collection = self.chroma_client.get_or_create_collection(name=collection)
         
         # Initialize InsightFace model for generating face embeddings
         self.face_model = insightface.app.FaceAnalysis()
