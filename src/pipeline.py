@@ -32,15 +32,15 @@ class Pipeline:
         self.processed_classes = set()  # Track classes processed in the current run
 
 
-    # Reset the report and attendance files to be empty
+    # Remove the pre-existing report and attendance files
     def _reset_files(self):
-        empty_df = pd.DataFrame()
-        empty_df.to_csv(os.path.join(self.results_dir, 'report.csv'))
-        date = datetime.now().date().strftime('%Y-%m-%d')
-        empty_df.to_csv(os.path.join(self.results_dir, f'attendance_{date}.csv'))
+        report_path = os.path.join(self.results_dir, 'report.csv')
+        attendance_path = os.path.join(self.results_dir, f'attendance_{datetime.now().date().strftime("%Y-%m-%d")}.csv')
+        if os.path.exists(report_path): os.remove(report_path)
+        if os.path.exists(attendance_path): os.remove(attendance_path)
 
 
-    # Get all the student names and roll numbers from the db
+    # Get the name and roll number of all students in the database
     def _get_all_students(self):
         collections = self.db.collection.get()
         return {item['roll_number']: item['name'] for item in collections['metadatas']}
@@ -96,7 +96,6 @@ class Pipeline:
         file_path = os.path.join(self.results_dir, 'report.csv')
         class_key = f"{class_info['subject_code']}_{class_info['date'].strftime('%Y-%m-%d')}"
         
-        # Only append if this class hasn’t been processed in this run
         if class_key not in self.processed_classes:
             report = {
                 'subject_name': class_info['subject_name'],
@@ -173,18 +172,19 @@ class Pipeline:
                     break
                 continue
 
-            faces = self.face_detector.detect(frame, padding=0.4)
+            # Use PerclosCalculator for both detection and scoring
             perclos_scores = self.perclos_calculator.process_frame(frame)
 
-            for i, (face, score_item) in enumerate(zip(faces, perclos_scores)):
-                cropping = frame[face[1]:face[3], face[0]:face[2]]
-                roll, name = self.db.query_face(cropping)
+            for score_item in perclos_scores:
+                bbox = score_item['bbox']  
+                bbox_padded = self.face_detector._get_padded(frame, [score_item['bbox']], padding=0.4)[0] # [x_min, y_min, x_max, y_max]
+                cropping_padded = frame[bbox_padded[1]:bbox_padded[3], bbox_padded[0]:bbox_padded[2]]
+                roll, name = self.db.query_face(cropping_padded)
                 if roll:
                     temp_detected_rolls.add(roll)
                     perclos_history.setdefault(roll, []).append(score_item['perclos'])
                     current_avg_perclos = np.mean(perclos_history[roll])
                     interactiveness = 100 - current_avg_perclos
-                    bbox = score_item['bbox']
                     cv2.rectangle(frame, (bbox[0], bbox[1]), (bbox[2], bbox[3]), (255, 0, 0), 2)
                     draw_landmarks(frame, score_item['landmarks'], bbox)
                     text = f"{name} | Interactiveness: {interactiveness:.2f}%"
@@ -213,5 +213,6 @@ class Pipeline:
 
 
 if __name__ == '__main__':
+    # Load and run the pipeline
     pipeline = Pipeline(k=30, collection="faces0")
     pipeline.run()
